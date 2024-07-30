@@ -1,5 +1,3 @@
-Here's the updated `README.md` file with your project's URL:
-
 ```markdown
 # Microphone Status Indicator
 
