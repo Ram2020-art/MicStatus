@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microphone Status Indicator</title>
+    <link id="favicon" rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/14090/14090371.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #status {
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Checking microphone status...</div>
+
+    <script>
+        // URLs for different status icons
+        const icons = {
+            unmuted: 'https://cdn-icons-png.flaticon.com/512/14090/14090371.png',
+            muted: 'https://cdn-icons-png.flaticon.com/512/14090/14090276.png',
+            error: 'https://cdn-icons-png.flaticon.com/512/11502/11502995.png'
+        };
+
+        // Function to update the favicon and status message
+        function updateFaviconAndStatus(isMuted, hasError = false) {
+            const favicon = document.getElementById('favicon');
+            const statusText = document.getElementById('status');
+            
+            if (hasError) {
+                favicon.href = icons.error;
+                statusText.innerText = 'Unable to access microphone. Please check permissions or device settings.';
+            } else if (isMuted) {
+                favicon.href = icons.muted;
+                statusText.innerText = 'Microphone is muted.';
+            } else {
+                favicon.href = icons.unmuted;
+                statusText.innerText = 'Microphone is active.';
+            }
+        }
+
+        // Function to check if the microphone is muted or not
+        async function checkMicStatus() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioTracks = stream.getAudioTracks();
+                
+                if (audioTracks.length > 0) {
+                    const track = audioTracks[0];
+                    // Detect if the track is muted or not
+                    const isMuted = track.muted || !track.enabled;
+                    updateFaviconAndStatus(isMuted);
+                } else {
+                    // No audio tracks available, assume muted
+                    updateFaviconAndStatus(true);
+                }
+                
+                // Stop all tracks after use
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                updateFaviconAndStatus(false, true); // Set to error state
+            }
+        }
+
+        // Initial check on page load
+        checkMicStatus();
+
+        // Re-check microphone status periodically (every 5 seconds)
+        setInterval(checkMicStatus, 5000);
+    </script>
+</body>
+</html>
