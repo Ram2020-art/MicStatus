@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microphone Status Indicator</title>
-    <link id="favicon" rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/14090/14090371.png">
+    <title>Microphone Sound Bar Visualizer</title>
+    <link id="favicon" rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/14090/14090276.png">
     <style>
         body {
             font-family: Arial, sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -18,38 +19,111 @@
         #status {
             font-size: 18px;
             color: #333;
+            margin-bottom: 20px;
+        }
+        #bars {
+            display: flex;
+            justify-content: space-between;
+            width: 200px;
+            margin-top: 20px;
+            opacity: 0; /* Initially hidden */
+        }
+        .bar {
+            background: #666;
+            height: 30px;
+            width: 6px;
+            display: inline-block;
+            opacity: 0.1;
+            transition: height 0.1s, opacity 0.1s;
         }
     </style>
 </head>
 <body>
     <div id="status">Checking microphone status...</div>
+    <div id="bars">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
 
     <script>
-        // URLs for different status icons
         const icons = {
             unmuted: 'https://cdn-icons-png.flaticon.com/512/14090/14090371.png',
             muted: 'https://cdn-icons-png.flaticon.com/512/14090/14090276.png',
-            error: 'https://cdn-icons-png.flaticon.com/512/11502/11502995.png'
+            error: 'https://cdn-icons-png.flaticon.com/512/11502/11502995.png',
+            soundDetected: 'https://cdn-icons-png.flaticon.com/512/1143/1143653.png'
         };
 
-        // Function to update the favicon and status message
-        function updateFaviconAndStatus(isMuted, hasError = false) {
-            const favicon = document.getElementById('favicon');
-            const statusText = document.getElementById('status');
-            
+        const bars = document.querySelectorAll('#bars .bar');
+        const favicon = document.getElementById('favicon');
+        const statusText = document.getElementById('status');
+        const barsContainer = document.getElementById('bars');
+
+        function updateFaviconAndStatus(isMuted, soundDetected, hasError) {
             if (hasError) {
                 favicon.href = icons.error;
-                statusText.innerText = 'Unable to access microphone. Please check permissions or device settings.';
+                statusText.innerText = 'Error accessing microphone.';
+                barsContainer.style.opacity = 0; // Hide bars
+            } else if (soundDetected) {
+                favicon.href = icons.soundDetected;
+                statusText.innerText = 'Sound detected!';
+                barsContainer.style.opacity = 1; // Show bars
             } else if (isMuted) {
                 favicon.href = icons.muted;
                 statusText.innerText = 'Microphone is muted.';
+                barsContainer.style.opacity = 0; // Hide bars
             } else {
                 favicon.href = icons.unmuted;
                 statusText.innerText = 'Microphone is active.';
+                barsContainer.style.opacity = 0; // Hide bars
             }
         }
 
-        // Function to check if the microphone is muted or not
+        function updateBars(dataArray) {
+            const barCount = bars.length;
+            let soundDetected = false;
+
+            for (let i = 0; i < barCount; i++) {
+                const bar = bars[i];
+                const value = dataArray[i] || 0;
+                const height = Math.max(3, value / 2); // Adjust height as needed
+                bar.style.height = `${height}px`;
+                bar.style.opacity = value > 20 ? 1 : 0.1; // Show bars only if sound is detected
+
+                if (value > 20) {
+                    soundDetected = true;
+                }
+            }
+
+            return soundDetected;
+        }
+
+        function detectSound(stream) {
+            const context = new AudioContext();
+            const analyser = context.createAnalyser();
+            const source = context.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function checkSound() {
+                analyser.getByteFrequencyData(dataArray);
+                const soundDetected = updateBars(dataArray);
+                updateFaviconAndStatus(false, soundDetected, false);
+
+                requestAnimationFrame(checkSound);
+            }
+            checkSound();
+        }
+
         async function checkMicStatus() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -57,27 +131,26 @@
                 
                 if (audioTracks.length > 0) {
                     const track = audioTracks[0];
-                    // Detect if the track is muted or not
                     const isMuted = track.muted || !track.enabled;
-                    updateFaviconAndStatus(isMuted);
+                    detectSound(stream);
+                    updateFaviconAndStatus(isMuted, false, false);
                 } else {
-                    // No audio tracks available, assume muted
-                    updateFaviconAndStatus(true);
+                    updateFaviconAndStatus(true, false, false);
                 }
                 
-                // Stop all tracks after use
                 stream.getTracks().forEach(track => track.stop());
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                updateFaviconAndStatus(false, true); // Set to error state
+                updateFaviconAndStatus(false, false, true);
             }
         }
 
-        // Initial check on page load
-        checkMicStatus();
+        function startDemo() {
+            statusText.innerText = 'Checking microphone status...';
+            checkMicStatus();
+        }
 
-        // Re-check microphone status periodically (every 5 seconds)
-        setInterval(checkMicStatus, 5000);
+        startDemo();
     </script>
 </body>
 </html>
