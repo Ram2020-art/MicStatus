@@ -116,7 +116,7 @@
             for (let i = 0; i < barCount; i++) {
                 const bar = bars[i];
                 const value = dataArray[i] || 0;
-                const height = Math.max(3, value / 4); // Adjust height as needed
+                const height = Math.max(3, value / 2); // Adjust height as needed
                 bar.style.height = `${height}px`;
                 bar.style.opacity = value > 20 ? 1 : 0.1; // Show bars only if sound is detected
 
@@ -161,6 +161,7 @@
                     updateFaviconAndStatus(true, false, false);
                 }
                 
+                // Stop the microphone stream after use
                 stream.getTracks().forEach(track => track.stop());
             } catch (error) {
                 console.error('Error accessing microphone:', error);
@@ -168,12 +169,8 @@
             }
         }
 
-        function startDemo() {
-            statusText.innerText = 'Checking microphone status...';
-            checkMicStatus();
-        }
-
-        startDemo();
+        // Start the microphone status check
+        checkMicStatus();
     </script>
 </body>
 </html>
